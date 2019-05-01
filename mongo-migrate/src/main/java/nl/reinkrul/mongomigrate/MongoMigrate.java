@@ -31,15 +31,26 @@ public class MongoMigrate {
 
     private final MongoClient providedClient;
     private final MongoClientURI uri;
+    private final Lock lock;
 
-    public MongoMigrate(final MongoClient providedClient) {
+    public MongoMigrate(final MongoClient providedClient, final Lock lock) {
         this.providedClient = checkNotNull(providedClient);
+        this.lock = checkNotNull(lock);
         this.uri = null;
     }
 
-    public MongoMigrate(final MongoClientURI uri) {
+    public MongoMigrate(final MongoClient providedClient) {
+        this(providedClient, new Lock());
+    }
+
+    public MongoMigrate(final MongoClientURI uri, final Lock lock) {
         this.uri = checkNotNull(uri);
+        this.lock = checkNotNull(lock);
         this.providedClient = null;
+    }
+
+    public MongoMigrate(final MongoClientURI uri) {
+        this(uri, new Lock());
     }
 
     public MongoMigrate(final String uri) {
@@ -90,7 +101,6 @@ public class MongoMigrate {
     private void doMigrate(final String databaseName, final List<ExecutableMigration> migrations, final MongoClient mongoClient) throws MigrationException {
         final MongoDatabase database = mongoClient.getDatabase(databaseName == null ? uri.getDatabase() : databaseName);
 
-        final Lock lock = new Lock();
         try {
             if (lock.acquire(database, 10000)) {
                 try {

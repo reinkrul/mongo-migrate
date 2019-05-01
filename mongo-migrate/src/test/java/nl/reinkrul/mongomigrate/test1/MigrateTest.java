@@ -3,6 +3,7 @@ package nl.reinkrul.mongomigrate.test1;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
+import nl.reinkrul.mongomigrate.Lock;
 import nl.reinkrul.mongomigrate.Migration;
 import nl.reinkrul.mongomigrate.MigrationException;
 import nl.reinkrul.mongomigrate.MongoMigrate;
@@ -14,24 +15,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class MigrateTest {
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         TestContainer.reset();
     }
 
     @Test
-    public void migrate() throws MigrationException {
+    public void migrate() throws MigrationException, InterruptedException {
         final MongoDatabase database = mock(MongoDatabase.class);
 
         final MongoClient client = mock(MongoClient.class);
         when(client.getDatabase("test")).thenReturn(database);
 
-        final MongoMigrate migrate = new MongoMigrate(client);
+        final Lock lock = mock(Lock.class);
+        when(lock.acquire(any(), anyInt())).thenReturn(true);
+
+        final MongoMigrate migrate = new MongoMigrate(client, lock);
         migrate.migrate(getClass().getPackageName(), "test");
 
         assertEquals(1, TestContainer.instances);
@@ -40,6 +48,9 @@ public class MigrateTest {
         assertEquals("step2", TestContainer.calls.get(1));
         assertEquals("step3", TestContainer.calls.get(2));
         assertEquals("step4", TestContainer.calls.get(3));
+
+        verify(lock).acquire(eq(database), anyInt());
+        verify(lock).release();
     }
 
     public static class TestContainer {
