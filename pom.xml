@@ -19,6 +19,7 @@
     <modules>
         <module>mongo-migrate</module>
         <module>tests</module>
+        <module>examples</module>
     </modules>
 
     <dependencyManagement>

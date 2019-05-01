@@ -1,6 +1,11 @@
-package nl.reinkrul.mongomigrate;
+package nl.reinkrul.mongomigrate.simpletest;
 
 import com.mongodb.client.MongoDatabase;
+
+import nl.reinkrul.mongomigrate.Migration;
+import nl.reinkrul.mongomigrate.MigrationException;
+import nl.reinkrul.mongomigrate.MongoMigrate;
+import nl.reinkrul.mongomigrate.TestBase;
 
 import org.bson.Document;
 import org.junit.Before;

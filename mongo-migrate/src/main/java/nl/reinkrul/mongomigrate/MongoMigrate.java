@@ -6,8 +6,6 @@ import com.mongodb.client.MongoDatabase;
 
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
-import org.reflections.scanners.SubTypesScanner;
-import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 import org.slf4j.Logger;
@@ -28,6 +26,7 @@ import static nl.reinkrul.mongomigrate.Util.checkNotNull;
 
 public class MongoMigrate {
 
+    public static final String COLLECTION_NAME = "mongomigrate";
     private static final Logger LOG = LoggerFactory.getLogger(MongoMigrate.class);
 
     private final MongoClient providedClient;
@@ -88,8 +87,24 @@ public class MongoMigrate {
         }
     }
 
-    private void doMigrate(final String database, final List<ExecutableMigration> migrations, final MongoClient mongoClient) throws MigrationException {
-        new MigrationExecutor(mongoClient.getDatabase(database == null ? uri.getDatabase() : database)).execute(migrations);
+    private void doMigrate(final String databaseName, final List<ExecutableMigration> migrations, final MongoClient mongoClient) throws MigrationException {
+        final MongoDatabase database = mongoClient.getDatabase(databaseName == null ? uri.getDatabase() : databaseName);
+
+        final Lock lock = new Lock();
+        try {
+            if (lock.acquire(database, 10000)) {
+                try {
+                    new MigrationExecutor(database).execute(migrations);
+                } finally {
+                    lock.release();
+                }
+            } else {
+                throw new MigrationException("Timeout while acquiring lock.");
+            }
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new MigrationException("Interrupted while acquiring lock.", e);
+        }
     }
 
     public void migrate(final String searchPackage) throws MigrationException {
